@@ -11,8 +11,8 @@ public class FunctionExecutor implements Executor<FunctionExecutor> {
 		this.function = function;
 	}
 	
-	public void execute(Object... arguments) throws Exception {
-		script.invokeFunction(function, arguments);
+	public Object execute(Object... arguments) throws Exception {
+		return script.invokeFunction(function, arguments);
 	}
 
 	@Override

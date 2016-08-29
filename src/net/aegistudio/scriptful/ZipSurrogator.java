@@ -10,8 +10,8 @@ import javax.script.ScriptEngine;
 public class ZipSurrogator extends ScriptSurrogator {
 	ZipFile file;
 	
-	public ZipSurrogator(ScriptEngine engine, Scriptful parent, File dataFolder, ZipFile file) {
-		super(engine, parent, dataFolder);
+	public ZipSurrogator(String pluginName, ScriptEngine engine, Scriptful parent, File dataFolder, ZipFile file) {
+		super(pluginName, engine, parent, dataFolder);
 		this.file = file;
 	}
 	

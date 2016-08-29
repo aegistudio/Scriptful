@@ -14,8 +14,8 @@ public class MethodExecutor implements Executor<MethodExecutor> {
 	}
 	
 	@Override
-	public void execute(Object... arguments) throws Exception {
-		script.invokeMethod(instance, function, arguments);
+	public Object execute(Object... arguments) throws Exception {
+		return script.invokeMethod(instance, function, arguments);
 	}
 	
 	public int compareTo(MethodExecutor another) {

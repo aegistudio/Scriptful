@@ -16,7 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class Scriptful extends JavaPlugin {
 	ScriptEngineManager manager;
-	TreeMap<String, ScriptSurrogator> surrogators = new TreeMap<String, ScriptSurrogator>();
+	TreeMap<String, ScriptSurrogator> surrogators = new TreeMap<>();
 	
 	public void onLoad() {
 		manager = new ScriptEngineManager();
@@ -85,7 +85,7 @@ public class Scriptful extends JavaPlugin {
 		ScriptEngine engine = manager.getEngineByExtension(suffix);
 		if(engine == null) throw new Exception("No engine for " + suffix);
 		
-		ScriptSurrogator surrogator = new ScriptSurrogator(engine, this, dataFolder);
+		ScriptSurrogator surrogator = new ScriptSurrogator(name, engine, this, dataFolder);
 		setCommon(engine, surrogator);
 		
 		engine.eval(new FileReader(js));
@@ -105,7 +105,7 @@ public class Scriptful extends JavaPlugin {
 		ScriptEngine engine = manager.getEngineByExtension(suffix);
 		if(engine == null) throw new Exception("No engine for " + suffix);
 		
-		ZipSurrogator surrogator = new ZipSurrogator(engine, this, dataFolder, zip);
+		ZipSurrogator surrogator = new ZipSurrogator(name, engine, this, dataFolder, zip);
 		setCommon(engine, surrogator);
 		
 		engine.eval(new InputStreamReader(zip.getInputStream(first)));
