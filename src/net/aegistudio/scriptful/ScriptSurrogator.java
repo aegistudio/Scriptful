@@ -193,7 +193,7 @@ public class ScriptSurrogator {
 			command.setAliases((List<String>)metadata.get("aliases"));
 		
 		if(metadata.containsKey("permissionMessage"))
-			command.setPermissionMessage(metadata.get("permission-message").toString());
+			command.setPermissionMessage(metadata.get("permissionMessage").toString());
 		
 		if(metadata.containsKey("executor"))
 			registerExecutor(name, metadata, "executor");
