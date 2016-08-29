@@ -81,31 +81,49 @@ public class ScriptSurrogator {
 	}
 	
 	public TreeSet<ListenerAbstract<FunctionExecutor>> functions = new TreeSet<>();
-	public <T extends Event> void registerListener(String name, EventPriority priority, Class<T> event) {
+	public void registerListener(String name, EventPriority priority, Class<? extends Event> event) {
 		ListenerAbstract<FunctionExecutor> function = new ListenerAbstract<>(
 				new FunctionExecutor((Invocable)engine, name), event);
 		if(functions.add(function)) getServer().getPluginManager()
 			.registerEvent(event, function, priority, function, parent);
 	}
 	
-	public <T extends Event> void unregisterListener(String name, Class<T> event) throws Exception {
+	public void unregisterListener(String name, Class<? extends Event> event) throws Exception {
 		ListenerAbstract<FunctionExecutor> function = new ListenerAbstract<>(
 				new FunctionExecutor((Invocable)engine, name), event);
 		if(functions.remove(function)) getHandlerList(event).unregister(function);
 	}
 	
 	public TreeSet<ListenerAbstract<MethodExecutor>> methods = new TreeSet<>();
-	public <T extends Event> void registerListener(Object instance, String name, EventPriority priority, Class<T> event) {
+	public void registerListener(Object instance, String name, EventPriority priority, Class<? extends Event> event) {
 		ListenerAbstract<MethodExecutor> method = new ListenerAbstract<>(
 				new MethodExecutor((Invocable)engine, instance, name), event);
 		if(methods.add(method)) getServer().getPluginManager()
 			.registerEvent(event, method, priority, method, parent);
 	}
 	
-	public <T extends Event> void unregisterListener(Object instance, String name, Class<T> event) throws Exception {
+	public void unregisterListener(Object instance, String name, Class<? extends Event> event) throws Exception {
 		ListenerAbstract<MethodExecutor> method = new ListenerAbstract<>(
 				new MethodExecutor((Invocable)engine, instance, name), event);
 		if(methods.remove(method)) getHandlerList(event).unregister(method);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void registerListener(Map<String, Object> listener) throws Exception {
+		if(!listener.containsKey("event")) 
+			throw new Exception("The listener should contain an subscribing event.");
+
+		if(!listener.containsKey("handle"))
+			throw new Exception("The listener should contain a handler");
+		
+		Class<? extends Event> eventClass;
+		if(listener.get("event") instanceof Class) eventClass = (Class<? extends Event>) listener.get("event");
+		else eventClass = (Class<? extends Event>) Class.forName(listener.get("event").toString());
+		
+		EventPriority priority = listener.containsKey("priority")? 
+				(EventPriority) listener.get("priority") : EventPriority.NORMAL;
+
+		registerListener(listener, "handle", priority, eventClass);
 	}
 	
 	/********************************* Unload method related ************************************************/
