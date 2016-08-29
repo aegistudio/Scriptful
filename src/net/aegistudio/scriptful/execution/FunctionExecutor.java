@@ -1,4 +1,4 @@
-package net.aegistudio.scriptful;
+package net.aegistudio.scriptful.execution;
 
 import javax.script.Invocable;
 

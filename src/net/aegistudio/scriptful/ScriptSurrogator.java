@@ -13,6 +13,10 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 
+import net.aegistudio.scriptful.abstraction.ListenerAbstract;
+import net.aegistudio.scriptful.execution.FunctionExecutor;
+import net.aegistudio.scriptful.execution.MethodExecutor;
+
 public class ScriptSurrogator {
 	ScriptEngine engine;
 	Scriptful parent;

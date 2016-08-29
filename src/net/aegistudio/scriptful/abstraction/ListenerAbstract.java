@@ -1,9 +1,11 @@
-package net.aegistudio.scriptful;
+package net.aegistudio.scriptful.abstraction;
 
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
+
+import net.aegistudio.scriptful.execution.Executor;
 
 public class ListenerAbstract<E extends Executor<E>> implements Listener, EventExecutor,
 	Comparable<ListenerAbstract<?>> {
