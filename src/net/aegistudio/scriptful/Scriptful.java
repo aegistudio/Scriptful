@@ -1,31 +1,72 @@
 package net.aegistudio.scriptful;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.TreeMap;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Scriptful extends JavaPlugin {
-	ScriptEngineManager manager;
 	TreeMap<String, ScriptSurrogator> surrogators = new TreeMap<>();
+	TreeMap<String, ScriptEngineFactory> factories = new TreeMap<>();
+	URLClassLoader loader;
 	
 	public void onLoad() {
-		manager = new ScriptEngineManager();
+		// Load default factories.
+		ScriptEngineManager manager = new ScriptEngineManager();
+		manager.getEngineFactories().forEach(e -> e.getExtensions().forEach(x -> factories.put(x, e)));
+		
+		// Load classes.
+		ArrayList<URL> url = new ArrayList<>();
+		ArrayList<String> forNames = new ArrayList<>();
+		for(File file : getDataFolder().listFiles())
+			if(file.getName().endsWith(".jar")) try {
+				url.add(file.toURI().toURL());
+
+				JarFile jar = new JarFile(file);
+				JarEntry service = jar.getJarEntry(
+						"META-INF/services/javax.script.ScriptEngineFactory");
+				if(jar != null) 
+					forNames.add(new BufferedReader(new InputStreamReader(jar.getInputStream(service)))
+						.lines().findFirst().get());
+				jar.close();
+			}
+			catch(Exception e) {
+				getLogger().log(Level.WARNING, "Fail to load classpath.", e);
+			}
+		loader = new URLClassLoader(url.toArray(new URL[0]));
+		for(String name : forNames) 
+			try { 
+				getLogger().info("Loading engine " + name + ".");
+				ScriptEngineFactory factory = (ScriptEngineFactory) loader.loadClass(name).newInstance();
+				factory.getExtensions().forEach(x -> factories.put(x, factory));
+				manager.registerEngineName(factory.getEngineName(), factory);
+			}
+			catch(Exception e) {
+				getLogger().log(Level.WARNING, "Fail to load engine " + name + ".", e);
+			}
 	}
 	
 	public void onEnable() {
 		// Print languages.
 		StringBuilder builder = new StringBuilder("Supported languages: ");
-		manager.getEngineFactories().forEach(e -> builder.append(e.getLanguageName()).append(", "));
+		factories.keySet().forEach(e -> builder.append(e).append(", "));
 		String result = new String(builder);
 		getLogger().log(Level.INFO, result.substring(0, result.length() - 2));
 		
@@ -50,6 +91,9 @@ public class Scriptful extends JavaPlugin {
 				case "gz":
 					makeZip(file, suffix, dataFolder);
 				break;
+				case "jar":
+					// skip.
+				break;
 				default:
 					makeScript(file, name, suffix, dataFolder);
 				break;
@@ -66,6 +110,12 @@ public class Scriptful extends JavaPlugin {
 		} catch(Exception e) {
 			super.getLogger().log(Level.WARNING, "UnloadFail", e);
 		};
+		
+		try {
+			loader.close();
+		} catch (IOException e) {
+			super.getLogger().log(Level.SEVERE, "Cannot unload classloader.", e);
+		}
 	}
 	
 	private void setCommon(ScriptEngine engine, ScriptSurrogator surrogator) {
@@ -81,8 +131,13 @@ public class Scriptful extends JavaPlugin {
 		engine.put("priority", priority);
 	}
 	
+	private ScriptEngine newEngine(String suffix) {
+		ScriptEngineFactory factory = factories.get(suffix);
+		return factory == null? null : factory.getScriptEngine();
+	}
+	
 	private void makeScript(File js, String name, String suffix, File dataFolder) throws Exception {
-		ScriptEngine engine = manager.getEngineByExtension(suffix);
+		ScriptEngine engine = newEngine(suffix);
 		if(engine == null) throw new Exception("No engine for " + suffix);
 		
 		ScriptSurrogator surrogator = new ScriptSurrogator(name, engine, this, dataFolder);
@@ -102,7 +157,7 @@ public class Scriptful extends JavaPlugin {
 		
 		String suffix = first.getName().substring(first.getName().lastIndexOf('.') + 1);
 		
-		ScriptEngine engine = manager.getEngineByExtension(suffix);
+		ScriptEngine engine = newEngine(suffix);
 		if(engine == null) throw new Exception("No engine for " + suffix);
 		
 		ZipSurrogator surrogator = new ZipSurrogator(name, engine, this, dataFolder, zip);
