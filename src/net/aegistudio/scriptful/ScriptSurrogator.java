@@ -73,6 +73,8 @@ public class ScriptSurrogator {
 		for(Entry<String, Command> current = commandIterator.next(); 
 				commandIterator.hasNext(); current = commandIterator.next())
 			if(current.getKey().startsWith(name + ":")) commandIterator.remove();
+		
+		this.commands.keySet().forEach(c -> commands.remove(c));
 	}
 	
 	/********************************* Event listener related *******************************************/
@@ -81,11 +83,13 @@ public class ScriptSurrogator {
 	}
 	
 	public TreeSet<ListenerAbstract<FunctionExecutor>> functions = new TreeSet<>();
-	public void registerListener(String name, EventPriority priority, Class<? extends Event> event) {
+	public void registerListener(String name, EventPriority priority, 
+			boolean ignoreCancelled, Class<? extends Event> event) {
+		
 		ListenerAbstract<FunctionExecutor> function = new ListenerAbstract<>(
 				new FunctionExecutor((Invocable)engine, name), event);
 		if(functions.add(function)) getServer().getPluginManager()
-			.registerEvent(event, function, priority, function, parent);
+			.registerEvent(event, function, priority, function, parent, ignoreCancelled);
 	}
 	
 	public void unregisterListener(String name, Class<? extends Event> event) throws Exception {
@@ -95,11 +99,12 @@ public class ScriptSurrogator {
 	}
 	
 	public TreeSet<ListenerAbstract<MethodExecutor>> methods = new TreeSet<>();
-	public void registerListener(Object instance, String name, EventPriority priority, Class<? extends Event> event) {
+	public void registerListener(Object instance, String name, EventPriority priority, 
+			boolean ignoreCancelled, Class<? extends Event> event) {
 		ListenerAbstract<MethodExecutor> method = new ListenerAbstract<>(
 				new MethodExecutor((Invocable)engine, instance, name), event);
 		if(methods.add(method)) getServer().getPluginManager()
-			.registerEvent(event, method, priority, method, parent);
+			.registerEvent(event, method, priority, method, parent, ignoreCancelled);
 	}
 	
 	public void unregisterListener(Object instance, String name, Class<? extends Event> event) throws Exception {
@@ -120,10 +125,10 @@ public class ScriptSurrogator {
 		if(listener.get("event") instanceof Class) eventClass = (Class<? extends Event>) listener.get("event");
 		else eventClass = (Class<? extends Event>) Class.forName(listener.get("event").toString());
 		
-		EventPriority priority = listener.containsKey("priority")? 
-				(EventPriority) listener.get("priority") : EventPriority.NORMAL;
-
-		registerListener(listener, "handle", priority, eventClass);
+		EventPriority priority = (EventPriority) listener.getOrDefault("priority", EventPriority.NORMAL);
+		boolean ignoreCancelled = (boolean) listener.getOrDefault("ignoreCancelled", false);
+		
+		registerListener(listener, "handle", priority, ignoreCancelled, eventClass);
 	}
 	
 	/********************************* Unload method related ************************************************/

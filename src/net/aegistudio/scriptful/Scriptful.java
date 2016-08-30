@@ -8,6 +8,8 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -19,6 +21,8 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -75,33 +79,36 @@ public class Scriptful extends JavaPlugin {
 		
 		// Read scripts.
 		for(File file : getDataFolder().listFiles()) try {
-			if(file.isDirectory()) continue;
-			
-			String fileName = file.getName();
-			int i = fileName.lastIndexOf('.');
-			String name = fileName.substring(0, i);
-			String suffix = fileName.substring(i + 1).toLowerCase();
-			
-			File dataFolder = new File(getDataFolder(), name);
-			if(!dataFolder.exists()) dataFolder.mkdir();
-			
-			switch(suffix) {
-				case "zip":
-				case "gzip":
-				case "gz":
-					makeZip(file, suffix, dataFolder);
-				break;
-				case "jar":
-					// skip.
-				break;
-				default:
-					makeScript(file, name, suffix, dataFolder);
-				break;
-			}
-
+			loadFile(file);
 		} catch(Exception e) {
 			super.getLogger().log(Level.WARNING, "LoadFail", e);
 		};
+	}
+	
+	void loadFile(File file) throws Exception {
+		if(file.isDirectory()) return;
+		
+		String fileName = file.getName();
+		int i = fileName.lastIndexOf('.');
+		String name = fileName.substring(0, i);
+		String suffix = fileName.substring(i + 1).toLowerCase();
+		
+		File dataFolder = new File(getDataFolder(), name);
+		if(!dataFolder.exists()) dataFolder.mkdir();
+		
+		switch(suffix) {
+			case "zip":
+			case "gzip":
+			case "gz":
+				makeZip(file, suffix, dataFolder);
+			break;
+			case "jar":
+				// skip.
+			break;
+			default:
+				makeScript(file, name, suffix, dataFolder);
+			break;
+		}	
 	}
 	
 	public void onDisable() {
@@ -166,5 +173,26 @@ public class Scriptful extends JavaPlugin {
 		engine.eval(new InputStreamReader(zip.getInputStream(first)));
 		
 		surrogators.put(name, surrogator);
+	}
+
+	public boolean onCommand(CommandSender sender, Command command, String label, String[] arguments) {
+		ScriptfulCommand.NONE.execute(this, sender, label, arguments);
+		return true;
+	}
+	
+	Map<String, File> listLoadable() {
+		File[] files = super.getDataFolder().listFiles();
+		TreeMap<String, File> result = new TreeMap<>();
+		for(File file : files) {
+			if(file.isDirectory()) continue;
+			if(file.getName().endsWith(".jar")) continue;
+			result.put(file.getName().substring(0, 
+					file.getName().lastIndexOf('.')), file);
+		}
+		return result;
+	}
+	
+	public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] arguments) {
+		return ScriptfulCommand.NONE.tabComplete(this, sender, label, arguments);
 	}
 }

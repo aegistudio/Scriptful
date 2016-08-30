@@ -2,3 +2,13 @@ name: Scriptful
 main: net.aegistudio.scriptful.Scriptful
 version: 0.02-beta
 author: aegistudio
+commands:
+  script:
+    description: Scripting plugin management command.
+    usage: /script [subcommand] [parameters]
+    permission: script.command
+    permission-message: You don't have permission to do that!
+permissions:
+  script.command:
+    description: Grants to issue script management command.
+    default: op
