@@ -1,6 +1,6 @@
 name: Scriptful
 main: net.aegistudio.scriptful.Scriptful
-version: 0.02-beta
+version: 0.03-beta
 author: aegistudio
 commands:
   script:
