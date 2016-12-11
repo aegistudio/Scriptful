@@ -26,10 +26,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import net.aegistudio.scriptful.classfinder.ClassFinder;
+import net.aegistudio.scriptful.classfinder.PrefixClassFinder;
+
 public class Scriptful extends JavaPlugin {
 	TreeMap<String, ScriptSurrogator> surrogators = new TreeMap<>();
 	TreeMap<String, ScriptEngineFactory> factories = new TreeMap<>();
 	URLClassLoader loader;
+	ClassFinder eventClassFinder;
 	
 	public void onLoad() {
 		// Load default factories.
@@ -39,21 +43,22 @@ public class Scriptful extends JavaPlugin {
 		// Load classes.
 		ArrayList<URL> url = new ArrayList<>();
 		ArrayList<String> forNames = new ArrayList<>();
-		for(File file : getDataFolder().listFiles())
-			if(file.getName().endsWith(".jar")) try {
-				url.add(file.toURI().toURL());
-
-				JarFile jar = new JarFile(file);
-				JarEntry service = jar.getJarEntry(
-						"META-INF/services/javax.script.ScriptEngineFactory");
-				if(jar != null) 
-					forNames.add(new BufferedReader(new InputStreamReader(jar.getInputStream(service)))
-						.lines().findFirst().get());
-				jar.close();
-			}
-			catch(Exception e) {
-				getLogger().log(Level.WARNING, "Fail to load classpath.", e);
-			}
+		if(getDataFolder().exists())
+			for(File file : getDataFolder().listFiles())
+				if(file.getName().endsWith(".jar")) try {
+					url.add(file.toURI().toURL());
+	
+					JarFile jar = new JarFile(file);
+					JarEntry service = jar.getJarEntry(
+							"META-INF/services/javax.script.ScriptEngineFactory");
+					if(jar != null) 
+						forNames.add(new BufferedReader(new InputStreamReader(jar.getInputStream(service)))
+							.lines().findFirst().get());
+					jar.close();
+				}
+				catch(Exception e) {
+					getLogger().log(Level.WARNING, "Fail to load classpath.", e);
+				}
 		loader = new URLClassLoader(url.toArray(new URL[0]));
 		for(String name : forNames) 
 			try { 
@@ -68,6 +73,19 @@ public class Scriptful extends JavaPlugin {
 	}
 	
 	public void onEnable() {
+		// Load event class finders.
+		saveResource(".eventClassPrefix", false);
+		File eventPrefixFile = new File(this.getDataFolder(), ".eventClassPrefix");
+		try(BufferedReader eventPrefix = new BufferedReader(new FileReader(eventPrefixFile))) {
+			Object[] prefixObjects = eventPrefix.lines().toArray();
+			String[] prefixArray = new String[prefixObjects.length];
+			System.arraycopy(prefixObjects, 0, prefixArray, 0, prefixArray.length);
+			eventClassFinder = new PrefixClassFinder(prefixArray);
+		}
+		catch(IOException e) {
+			super.getLogger().log(Level.WARNING, "LoadEventPrefixFail", e);
+		}
+		
 		// Print languages.
 		StringBuilder builder = new StringBuilder("Supported languages: ");
 		factories.keySet().forEach(e -> builder.append(e).append(", "));
@@ -91,6 +109,7 @@ public class Scriptful extends JavaPlugin {
 		String fileName = file.getName();
 		int i = fileName.lastIndexOf('.');
 		String name = fileName.substring(0, i);
+		if(name.length() == 0) return;	// Skip hidden file.
 		String suffix = fileName.substring(i + 1).toLowerCase();
 		
 		File dataFolder = new File(getDataFolder(), name);
@@ -100,6 +119,7 @@ public class Scriptful extends JavaPlugin {
 			case "zip":
 			case "gzip":
 			case "gz":
+			case "tar.gz":
 				makeZip(file, suffix, dataFolder);
 			break;
 			case "jar":
@@ -119,7 +139,7 @@ public class Scriptful extends JavaPlugin {
 		};
 		
 		try {
-			loader.close();
+			if(loader != null) loader.close();
 		} catch (IOException e) {
 			super.getLogger().log(Level.SEVERE, "Cannot unload classloader.", e);
 		}

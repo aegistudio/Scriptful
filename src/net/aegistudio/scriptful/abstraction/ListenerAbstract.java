@@ -21,7 +21,8 @@ public class ListenerAbstract<E extends Executor<E>> implements Listener, EventE
 	@Override
 	public void execute(Listener arg0, Event arg1) throws EventException {
 		try {
-			executor.execute(arg1);
+			if(arg1.getClass() == event)
+				executor.execute(arg1);
 		} catch (Exception e) {
 			throw new EventException(e);
 		}

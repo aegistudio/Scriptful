@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.bukkit.plugin.PluginManager;
 
 import net.aegistudio.scriptful.abstraction.CommandExecAbstract;
 import net.aegistudio.scriptful.abstraction.ListenerAbstract;
+import net.aegistudio.scriptful.abstraction.RunnableAbstract;
 import net.aegistudio.scriptful.abstraction.TabCompleterAbstract;
 import net.aegistudio.scriptful.execution.FunctionExecutor;
 import net.aegistudio.scriptful.execution.MethodExecutor;
@@ -75,6 +77,10 @@ public class ScriptSurrogator {
 			if(current.getKey().startsWith(name + ":")) commandIterator.remove();
 		
 		this.commands.keySet().forEach(c -> commands.remove(c));
+		
+		// Unregister tasks.
+		for(RunnableAbstract<?> runnable : runnables)
+			runnable.cancel();
 	}
 	
 	/********************************* Event listener related *******************************************/
@@ -123,7 +129,7 @@ public class ScriptSurrogator {
 		
 		Class<? extends Event> eventClass;
 		if(listener.get("event") instanceof Class) eventClass = (Class<? extends Event>) listener.get("event");
-		else eventClass = (Class<? extends Event>) Class.forName(listener.get("event").toString());
+		else eventClass = (Class<? extends Event>) parent.eventClassFinder.findClass(listener.get("event").toString());
 		
 		EventPriority priority = (EventPriority) listener.getOrDefault("priority", EventPriority.NORMAL);
 		boolean ignoreCancelled = (boolean) listener.getOrDefault("ignoreCancelled", false);
@@ -229,5 +235,42 @@ public class ScriptSurrogator {
 		PluginCommand command = commands.get(name);
 		command.setTabCompleter(new TabCompleterAbstract<MethodExecutor>(
 				new MethodExecutor((Invocable) engine, instance, function)));
+	}
+	
+	ArrayList<RunnableAbstract<?>> runnables = new ArrayList<>();
+	public RunnableAbstract<FunctionExecutor> createRunnable(String function) {
+		RunnableAbstract<FunctionExecutor> result = new RunnableAbstract<>(parent,
+				new FunctionExecutor((Invocable) engine, function));
+		runnables.add(result);
+		return result;
+	}
+	
+	public RunnableAbstract<MethodExecutor> createRunnable(Object instance, String function) {
+		RunnableAbstract<MethodExecutor> result = new RunnableAbstract<>(parent,
+				new MethodExecutor((Invocable) engine, instance, function));
+		runnables.add(result);
+		return result;
+	}
+	
+	public RunnableAbstract<MethodExecutor> schedule(Map<String, Object> instance) throws Exception{
+		if(!instance.containsKey("run")) throw new Exception("A task should contain a run method");
+		RunnableAbstract<MethodExecutor> result = createRunnable(instance, "run");
+		boolean synchronous = !((boolean) instance.getOrDefault("async", false));
+		long period = Long.parseLong(instance.getOrDefault("period", 0l).toString());
+		long delay = Long.parseLong(instance.getOrDefault("delay", 0l).toString());
+		
+		if(instance.containsKey("period")) {
+			if(synchronous) result.runTaskTimer(delay, period);
+			else result.runTaskTimerAsynchronously(delay, period);
+		}
+		else if(instance.containsKey("delay")) {
+			if(synchronous) result.runTaskLater(delay);
+			else result.runTaskLaterAsynchronously(delay);
+		}
+		else {
+			if(synchronous) result.runTask();
+			else result.runTaskAsynchronously();
+		}
+		return result;
 	}
 }
